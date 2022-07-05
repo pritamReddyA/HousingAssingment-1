@@ -9,6 +9,8 @@ import java.io.IOException
 class ProtoUserRepoImpl(
     private val protoDataStore: DataStore<User>
 ) : ProtoUserRepo{
+
+    //Not using this function
     override suspend fun saveUserInState(user: User) {
         protoDataStore.updateData { store->
             store.toBuilder()
@@ -19,6 +21,7 @@ class ProtoUserRepoImpl(
         }
     }
 
+    //Getting user details from Proto
     override suspend fun getUserInState(): Flow<User> {
         return protoDataStore.data
             .catch { exp ->
@@ -30,6 +33,7 @@ class ProtoUserRepoImpl(
             }
     }
 
+    //Setting user details in Proto
     override suspend fun updateValue(name: String, phoneNumber: String, email: String){
         protoDataStore.updateData { store->
             store.toBuilder()

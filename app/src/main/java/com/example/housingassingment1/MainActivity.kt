@@ -61,13 +61,13 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-
+// Profile Screen Component
 @SuppressLint("CoroutineCreationDuringComposition")
 @Composable
 fun ProfileScreen(userRepo: ProtoUserRepo?){
 
 
-
+    // Text Field States
     val emailState = remember{ EmailState()}
     val phoneNumberState = remember{PhoneNumberState()}
     val nameState = remember {NameState()}
@@ -78,7 +78,7 @@ fun ProfileScreen(userRepo: ProtoUserRepo?){
         mutableStateOf("")
     }
 
-
+    // Getting the data from Proto
     coroutineScope.launch{
         userRepo?.getUserInState()?.collect(){ user ->
             withContext(Dispatchers.Main){
@@ -90,17 +90,18 @@ fun ProfileScreen(userRepo: ProtoUserRepo?){
     }
 
 
-
+    // Toast notifications
     if(notification.value.isNotEmpty()){
         Toast.makeText(LocalContext.current, notification.value, Toast.LENGTH_SHORT).show()
         notification.value = ""
     }
 
 
-
+    //Main Background
     Scaffold(backgroundColor = Color(0xFF6635DF)) {
         Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
             Box() {
+                // Card for inputting details
                 Card(
                     Modifier
 
@@ -206,7 +207,6 @@ fun ProfileScreen(userRepo: ProtoUserRepo?){
                     }
                 }
                 Box(modifier = Modifier
-
                     .offset(135.dp, (100).dp)
                      ) {
                     Image(painter = painterResource(R.drawable.download), contentDescription = "avatar", contentScale = ContentScale.Crop, modifier = Modifier
@@ -223,6 +223,7 @@ fun ProfileScreen(userRepo: ProtoUserRepo?){
 
 }
 
+//Error text display
 @Composable
 fun ErrorField(error : String){
     Text(text = error, modifier = Modifier.fillMaxWidth(), style = TextStyle(color= MaterialTheme.colors.error))

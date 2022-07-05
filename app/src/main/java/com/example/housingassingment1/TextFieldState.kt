@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
+//Main text field State( (used for validation_
 open class TextFieldState(
     private val validator: (String) -> Boolean = {true},
     private val errorMessage: (String) -> String

@@ -6,6 +6,7 @@ import com.google.protobuf.InvalidProtocolBufferException
 import java.io.InputStream
 import java.io.OutputStream
 
+//Should learn this
 object MySerializer : Serializer<User> {
 
     override val defaultValue: User = User.getDefaultInstance()
