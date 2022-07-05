@@ -7,7 +7,7 @@ class NameState: TextFieldState(
     errorMessage = {name -> nameErrorMessage(name) }
 )
 
-private const val NAME_REGEX = "^[A-Za-z][A-Za-z_]{4,30}$"
+private const val NAME_REGEX = "^[\\p{L} .'-]{4,30}+$"
 private fun isName(name : String): Boolean{
     return Pattern.matches(NAME_REGEX, name)
 }
