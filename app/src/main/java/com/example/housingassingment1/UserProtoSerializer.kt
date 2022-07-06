@@ -7,7 +7,7 @@ import java.io.InputStream
 import java.io.OutputStream
 
 //Should learn this
-object MySerializer : Serializer<User> {
+object UserProtoSerializer : Serializer<User> {
 
     override val defaultValue: User = User.getDefaultInstance()
 
