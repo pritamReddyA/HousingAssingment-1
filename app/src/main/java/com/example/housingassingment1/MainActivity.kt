@@ -20,30 +20,30 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.datastore.core.DataStore
 import androidx.datastore.dataStore
 import com.example.housingassingment1.ui.theme.HousingAssingment1Theme
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import java.util.regex.Pattern
 
 
 class MainActivity : ComponentActivity() {
 
-    private val DATA_STORE_FILE_NAME = "user_store.pb"
-    private val Context.userDataStore: DataStore<User> by dataStore(
+
+    val DATA_STORE_FILE_NAME = "user_store.pb"
+    val Context.userDataStore: DataStore<User> by dataStore(
         fileName = DATA_STORE_FILE_NAME,
-        serializer = MySerializer
+        serializer = UserProtoSerializer
     )
-
-    private var userRepo : ProtoUserRepo? = null
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val viewModel  = UserDataViewModel(repo = ProtoUserRepoImpl(this.applicationContext.userDataStore))
+        var userRepo : ProtoUserRepo? = null
         setContent {
             userRepo = ProtoUserRepoImpl(userDataStore)
             HousingAssingment1Theme {
@@ -51,9 +51,23 @@ class MainActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colors.background) {
 
-                    ProfileScreen(userRepo)
+
+                    val userState by viewModel.userState.collectAsState()
+
+
+                    val (name, setName) = remember {
+                        mutableStateOf( userState?.name?:"")
+                    }
+                    val (phNumber, setPhNumber) = remember {
+                        mutableStateOf(userState?.number?:"")
+                    }
+                    val (email, setEmail) = remember {
+                        mutableStateOf(userState?.email?:"")
+                    }
+                    ProfileScreen( name, setName, phNumber, setPhNumber, email, setEmail, this.applicationContext.userDataStore)
                 }
             }
+
 
 
 
@@ -64,13 +78,23 @@ class MainActivity : ComponentActivity() {
 // Profile Screen Component
 @SuppressLint("CoroutineCreationDuringComposition")
 @Composable
-fun ProfileScreen(userRepo: ProtoUserRepo?){
-
-
+fun ProfileScreen(
+    name:String,
+    setName: (String) -> Unit,
+    phNumber: String,
+    setPhNumber:(String) ->Unit,
+    email:String,
+    setEmail: (String) ->Unit,
+    userStore: DataStore<User>
+                  ){
     // Text Field States
-    val emailState = remember{ EmailState()}
-    val phoneNumberState = remember{PhoneNumberState()}
-    val nameState = remember {NameState()}
+//    val emailState = remember{ EmailState()}
+//    val phoneNumberState = remember{PhoneNumberState()}
+//    val nameState = remember {NameState()}
+
+
+    val viewModel  = UserDataViewModel(repo = ProtoUserRepoImpl(userStore))
+
 
     val coroutineScope = rememberCoroutineScope()
 
@@ -78,17 +102,27 @@ fun ProfileScreen(userRepo: ProtoUserRepo?){
         mutableStateOf("")
     }
 
-    // Getting the data from Proto
-    coroutineScope.launch{
-        userRepo?.getUserInState()?.collect(){ user ->
-            withContext(Dispatchers.Main){
-                nameState.text = user.name
-                phoneNumberState.text = user.number
-                emailState.text = user.email
-            }
-        }
+
+    val (isNameError, setIsNameError) = remember {
+        mutableStateOf(false)
+    }
+    val (isNumberError, setIsNumberError) = remember {
+        mutableStateOf(false)
+    }
+    val (isEmailError, setIsEmailError) = remember {
+        mutableStateOf(false)
     }
 
+    val (isButtonErrorState, setButtonState) = remember {
+        mutableStateOf(true)
+    }
+    if(!(name == "" || email == "" || phNumber == "")) {
+        if(isNameError || isEmailError || isNumberError){
+            setButtonState(true)
+        }else if(!isNameError && !isEmailError && !isNumberError){
+            setButtonState(false)
+        }
+    }
 
     // Toast notifications
     if(notification.value.isNotEmpty()){
@@ -97,14 +131,11 @@ fun ProfileScreen(userRepo: ProtoUserRepo?){
     }
 
 
-    //Main Background
     Scaffold(backgroundColor = Color(0xFF6635DF)) {
         Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
             Box() {
-                // Card for inputting details
                 Card(
                     Modifier
-
                         .padding(top = 160.dp)
                 ){
                     Column(Modifier
@@ -116,69 +147,17 @@ fun ProfileScreen(userRepo: ProtoUserRepo?){
                         Column(modifier = Modifier.fillMaxHeight(0.5f),
                             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceAround) {
 
-                            Column() {
-                                TextField(value = nameState.text,
-                                    onValueChange = { nameState.text = it; nameState.validate() },
-                                    label = { Text(text = "Name") },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(0.dp),
-                                    colors = TextFieldDefaults.textFieldColors(
-                                        backgroundColor = Color.White,
-                                    ),
-                                    isError = nameState.error != null
-                                )
-                                nameState.error?.let { ErrorField(it) }
+                            Column {
+                                NameTextField(name, setName, Modifier, isNameError, setIsNameError, setButtonState)
+
                             }
 
                             Column() {
-
-
-                                TextField(value = phoneNumberState.text,
-                                    onValueChange = {
-                                        phoneNumberState.text = it; phoneNumberState.validate()
-                                    },
-                                    label = { Text(text = "Phone Number") },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(0.dp),
-                                    colors = TextFieldDefaults.textFieldColors(
-                                        backgroundColor = Color.White
-                                    ),
-                                    leadingIcon = {
-                                        Text(text = "+91")
-                                    },
-                                    isError = phoneNumberState.error != null
-                                )
-                                phoneNumberState.error?.let { ErrorField(it) }
+                                NumberTextField(phNumber, setPhNumber, Modifier, isNumberError, setIsNumberError, setButtonState)
                             }
 
-//                            TogiRoundedPicker(
-//                                value = phoneNumber.value,
-//                                onValueChange = { phoneNumber.value = it },
-//                                defaultCountry = getLibCountries().single { it.countryCode == defaultLang },
-//                                pickedCountry = {
-//                                    phoneCode = it.countryPhoneCode
-//                                    defaultLang = it.countryCode
-//                                },
-//                                error = isValidPhone
-//                            )
-
                             Column() {
-                                TextField(value = emailState.text,
-                                    onValueChange = {
-                                        emailState.text = it
-                                        emailState.validate()
-                                    },
-                                    label = { Text(text = "Email") },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(0.dp), colors = TextFieldDefaults.textFieldColors(
-                                        backgroundColor = Color.White,
-                                    ),
-                                    isError = emailState.error != null
-                                )
-                                emailState.error?.let { ErrorField(it) }
+                                EmailTextField(email,setEmail, Modifier, isEmailError, setIsEmailError, setButtonState)
                             }
 
                         }
@@ -190,15 +169,15 @@ fun ProfileScreen(userRepo: ProtoUserRepo?){
                                 shape = RoundedCornerShape(10.dp),
                                 onClick = { coroutineScope.launch {
 
-                                    userRepo?.updateValue(nameState.text, phoneNumberState.text, emailState.text)
+                                    viewModel.addUser(name, phNumber, email)
+
+//                                    userRepo?.updateValue(nameState.text, phoneNumberState.text, emailState.text)
                                 }
                                     notification.value = "Data Saved Successfully!"
-
                                 },
-
-                                enabled = (emailState.isValid() && nameState.isValid() && phoneNumberState.isValid())
+                                enabled = !isButtonErrorState
                                 ) {
-                                Text(text = "Save Details")
+                                Text(text = stringResource(id = R.string.save_details))
                             }
                         }
 
@@ -209,7 +188,8 @@ fun ProfileScreen(userRepo: ProtoUserRepo?){
                 Box(modifier = Modifier
                     .offset(135.dp, (100).dp)
                      ) {
-                    Image(painter = painterResource(R.drawable.download), contentDescription = "avatar", contentScale = ContentScale.Crop, modifier = Modifier
+                    Image(painter = painterResource(R.drawable.download), contentDescription = stringResource(
+                        id = R.string.avatar), contentScale = ContentScale.Crop, modifier = Modifier
                         .size(120.dp)
                         .clip(CircleShape)
                         .clickable { notification.value = "image clicked" }
@@ -223,22 +203,113 @@ fun ProfileScreen(userRepo: ProtoUserRepo?){
 
 }
 
+@Composable
+fun NameTextField(
+    name:String,
+    onValueChanged:(String) -> Unit,
+    modifier: Modifier,
+    isNameError:Boolean,
+    setIsNameError: (Boolean) ->Unit,
+    setButtonState: (Boolean) -> Unit
+){
+    val NAME_REGEX = "^[\\p{L} .'-]{4,30}+$"
+    fun isError(name: String){
+         setIsNameError(!Pattern.matches(NAME_REGEX, name))
+    }
+
+    TextField(value = name,
+        onValueChange = { onValueChanged(it); isError(it)},
+        label = { Text(text = stringResource(id = R.string.name_string)) },
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(0.dp),
+        colors = TextFieldDefaults.textFieldColors(
+            backgroundColor = Color.White,
+        ),
+        isError = isNameError
+    )
+    if(isNameError){
+        ErrorField(error = stringResource(R.string.name_error_text))
+    }
+}
+
+
+@Composable
+fun NumberTextField(
+    number:String,
+    onValueChanged: (String) -> Unit,
+    modifier: Modifier,
+    isNumberError: Boolean,
+    setIsNumberError: (Boolean) -> Unit,
+    setButtonState:(Boolean)-> Unit
+){
+    val NUMBER_REGEX = stringResource(R.string.number_regex)
+    fun isError(number: String){
+        setIsNumberError(!Pattern.matches(NUMBER_REGEX, number))
+    }
+
+    TextField(value = number,
+        onValueChange = {
+            onValueChanged(it); isError(it)
+        },
+        label = { Text(text = stringResource(R.string.number_string)) },
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(0.dp),
+        colors = TextFieldDefaults.textFieldColors(
+            backgroundColor = Color.White
+        ),
+        leadingIcon = {
+            Text(text = stringResource(id = R.string.country_code))
+        },
+        isError = isNumberError
+    )
+    if(isNumberError){
+        ErrorField(error = stringResource(R.string.number_error))
+    }
+}
+
+@Composable
+fun EmailTextField(
+    email:String,
+    onValueChanged: (String) -> Unit,
+    modifier: Modifier,
+    isEmailError: Boolean,
+    setIsEmailError:(Boolean)->Unit,
+    setButtonState:(Boolean)-> Unit
+){
+    fun isError(email: String){
+        setIsEmailError(!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches())
+    }
+
+    TextField(value = email,
+        onValueChange = {
+            onValueChanged(it); isError(it)
+        },
+        label = { Text(text = stringResource(id = R.string.email)) },
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(0.dp), colors = TextFieldDefaults.textFieldColors(
+            backgroundColor = Color.White,
+        ),
+        isError = isEmailError
+    )
+    if(isEmailError){
+        ErrorField(error = stringResource(id = R.string.email_error))
+    }
+}
+
+
+
+
+
+
+
+
 //Error text display
 @Composable
 fun ErrorField(error : String){
     Text(text = error, modifier = Modifier.fillMaxWidth(), style = TextStyle(color= MaterialTheme.colors.error))
 }
 
-
-
-
-
-
-@Preview(showBackground = true)
-@Composable
-fun DefaultPreview() {
-    HousingAssingment1Theme {
-        ProfileScreen(userRepo = null)
-    }
-}
 
